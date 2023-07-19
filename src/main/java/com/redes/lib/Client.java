@@ -7,10 +7,9 @@ import java.net.UnknownHostException;
 import java.io.IOException;
 
 public class Client {
-  public static void start(String[] args) {
+  private UDPConnection connection;
 
-    byte[] buffer = new byte[13];
-    UDPConnection connection = new UDPConnection(buffer, 6789);
+  public void start(String[] args) {
 
     try {
       byte[] message = args[0].getBytes();// pegando o conteudo da mensagem do args
@@ -19,7 +18,7 @@ public class Client {
       System.out.println(message.length);
       System.out.println(server_address.getHostName());
 
-      connection.bootstrap(server_address);
+      connection = new UDPConnection(new byte[13], 6789, server_address);
       connection.send(message);
 
       DatagramPacket reply = connection.recive();

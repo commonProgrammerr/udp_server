@@ -5,7 +5,8 @@ import java.net.DatagramPacket;
 import java.net.SocketException;
 import java.util.regex.Pattern;
 
-public class Server {
+public class Server extends Thread {
+  private UDPConnection connection;
 
   private static int[] getNumbers(String regex, String data) throws NumberFormatException {
     String[] _numbers = data.replaceAll(" ", "").split(regex);
@@ -15,6 +16,13 @@ public class Server {
     return numbers;
   }
 
+  /**
+   * @param request
+   * @return
+   * @throws NumberFormatException
+   * 
+   *                               Trata a requisição e devolve a resposta
+   */
   private static byte[] getResponse(byte[] request) throws NumberFormatException {
     String requestString = request.toString();
 
@@ -32,38 +40,52 @@ public class Server {
     }
   }
 
-  public static void start() {
-    byte[] buffer = new byte[13];
-    UDPConnection connection = new UDPConnection(buffer, 6789);
+  public void bootstrap() throws SocketException {
+    // inicia o servidor na porta 6789
+    connection = new UDPConnection(new byte[13], 6789);
+
     try {
-
       while (true) {
-        connection.bootstrap();
-
-        if (connection.socket.isConnected()) {
-          DatagramPacket request = connection.recive();
-          System.out.println("New request recived: " + request.getAddress() + ":" + request.getPort());
-          System.out.println("Data: " + request.getData().toString());
-
-          try {
-            byte[] response = Server.getResponse(request.getData());
-            connection.send(response, request.getAddress(), request.getPort());
-          } catch (NumberFormatException e) {
-            e.printStackTrace();
-            connection.send(e.getMessage().getBytes(), request.getAddress(), request.getPort());
-          } catch (Error e) {
-            e.printStackTrace();
-            connection.send(e.getMessage().getBytes(), request.getAddress(), request.getPort());
-          } // fechando try
+        // caso haja conexção e dados recebidos inicia uma nova thread como o
+        // processamento
+        if (connection.isConnected() && connection.recive().getLength() > 0) {
+          this.start();
+          sleep(10); // pequeno delay para evitar concorrencia
         }
       }
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      connection.close();
+    } // fechando o try
+  }// fechando a main
+
+  public void run() {
+    try {
+      DatagramPacket request = connection.clean(new byte[13]); // Modifica o DatagramPacket por um novo e retorna o que
+                                                               // contem a requisição
+
+      System.out.println("New request recived: " + request.getAddress() + ":" + request.getPort());
+      System.out.println("Data: " + request.getData().toString());
+
+      try {
+        byte[] response = Server.getResponse(request.getData()); // obtem a resposta do calculo...
+        connection.send(response, request.getAddress(), request.getPort()); // envia a resposta
+      } catch (NumberFormatException e) {
+        e.printStackTrace();
+        connection.send(e.getMessage().getBytes(), request.getAddress(), request.getPort()); // envia erro para o client
+      } catch (Error e) {
+        e.printStackTrace();
+        connection.send(e.getMessage().getBytes(), request.getAddress(), request.getPort()); // envia erro para o client
+      } // fechando try
 
     } catch (SocketException e) {
       e.printStackTrace();
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
-      connection.close();
+      if (connection != null)
+        connection.close();
     } // fechando o try
   }// fechando a main
 }

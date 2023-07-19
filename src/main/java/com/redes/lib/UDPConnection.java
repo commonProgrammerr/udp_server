@@ -6,49 +6,48 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.SocketException;
 
-public class UDPConnection {
+public class UDPConnection extends DatagramSocket {
   private int port;
   private byte[] buffer;
   private InetAddress targert_address;
 
-  public DatagramSocket socket;
   public DatagramPacket _recived;
   public DatagramPacket _sended;
 
-  UDPConnection(byte[] buffer) {
+  UDPConnection(byte[] buffer) throws SocketException {
+    super();
     this.buffer = buffer;
   }
 
-  UDPConnection(byte[] buffer, int port) {
+  UDPConnection(byte[] buffer, int port) throws SocketException {
+    super(port);
     this.port = port;
     this.buffer = buffer;
   }
 
-  public void bootstrap() throws SocketException {
-    this.socket = new DatagramSocket(this.port);
+  UDPConnection(byte[] _buffer, int port, InetAddress _address) throws SocketException {
+    super(port, _address);
+    this.buffer = _buffer;
+    this.targert_address = _address;
   }
 
-  public void bootstrap(InetAddress _address) throws SocketException {
-    this.targert_address = _address;
-    this.socket = new DatagramSocket(port, targert_address);
+  public DatagramPacket clean(byte[] _buffer) throws IOException {
+    DatagramPacket last_Packet = _recived;
+    buffer = _buffer;
+    _recived = new DatagramPacket(_buffer, _buffer.length);
+    return last_Packet;
   }
 
   public DatagramPacket recive() throws IOException {
     _recived = new DatagramPacket(buffer, buffer.length);
-    this.socket.receive(_recived);
+    super.receive(_recived);
     return _recived;
   }
 
   public DatagramPacket send(byte[] data, InetAddress _address, int port) throws IOException {
     _sended = new DatagramPacket(data, data.length, targert_address, port);
-    this.socket.send(_sended);
+    super.send(_sended);
     return _sended;
-  }
-
-  public void close() {
-    if (this.socket != null) {
-      this.socket.close();
-    }
   }
 
   public DatagramPacket send(byte[] data) throws IOException {
